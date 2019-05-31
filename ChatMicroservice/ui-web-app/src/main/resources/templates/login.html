@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+<title>Spring Boot Security Hello</title>
+</head>
+<body>
+
+	<a href="https://www.facebook.com/dialog/oauth?client_id=591936887956544&
+	redirect_uri=https://localhost:8080/login-facebook">
+		Login Facebook</a>
+	<a href="https://accounts.google.com/o/oauth2/auth?scope=email&
+	redirect_uri=https://localhost:8080/login-google&response_type=code
+		&client_id=612511954448-tjtulj365l7cpmq4ptgdh35qoe5poeon.apps.googleusercontent.com&approval_prompt=force">
+		Login With Gmail</a>
+
+	<br/>
+	<form name='login-form' th:action="@{/afterLogin}" method='POST'>
+		<table>
+			<tr>
+				<td>Username:</td>
+				<td><input type='text' name='username' value=''></td>
+			</tr>
+			<tr>
+				<td>Password:</td>
+				<td><input type='password' name='password' /></td>
+			</tr>
+			<tr>
+				<td><input name="submit" type="submit" value="submit" /></td>
+			</tr>
+			<tr>
+				<td><a th:href="@{/register}">Register</a> </td>
+				<td><a th:href="@{/forgot}">Forgot password</a> </td>
+			</tr>
+		</table>
+	</form>
+</body>
+</html>

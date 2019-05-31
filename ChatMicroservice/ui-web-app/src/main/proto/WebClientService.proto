@@ -1,0 +1,44 @@
+syntax = "proto3";
+package com.vng.apigateway;
+
+message LoginRequest{
+    string username = 1;
+    string password = 2;
+}
+
+message Response{
+    string token = 1;
+    string username = 2;
+}
+
+message Message{
+    string message = 1;
+}
+
+message WebsocketInfo{
+    string endpoint = 1;
+    string topic = 2;
+    string chatCode = 3;
+}
+
+message RegisterRequest {
+    string fullname = 1;
+    string password = 3;
+    string email = 4;
+    string gender = 5;
+    string birthday = 6;
+}
+
+message ForgotRequest {
+    string username = 1;
+    string email = 2;
+}
+
+service WebClientService{
+    rpc login(LoginRequest) returns (Response);
+    rpc logout(Message) returns (Message);
+    rpc checkToken(Message) returns (Message);
+    rpc getWebsocketInfo(Message) returns (WebsocketInfo);
+    rpc register(RegisterRequest) returns (Message);
+    rpc forgot(ForgotRequest) returns (Message);
+}

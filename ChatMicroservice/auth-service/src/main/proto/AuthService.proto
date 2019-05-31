@@ -1,0 +1,44 @@
+syntax = "proto3";
+package com.vng.security;
+
+message Request{
+    string username = 1;
+    string password = 2;
+    Token token = 3;
+}
+
+message Response{
+    string username = 1;
+    string chatCode = 2;
+    Token token = 3;
+}
+
+message Token{
+    string token = 1;
+    string status = 2;
+}
+
+message RegisterRequest {
+    string fullname = 1;
+    string password = 3;
+    string email = 4;
+    string gender = 5;
+    string birthday = 6;
+}
+
+message Message {
+    string message = 1;
+}
+
+message ForgotRequest {
+    string username = 1;
+    string email = 2;
+}
+
+service AuthService{
+    rpc login(Request) returns (Response);
+    rpc logout(Request) returns (Response);
+    rpc checkToken(Request) returns (Response);
+    rpc register(RegisterRequest) returns (Message);
+    rpc forgot(ForgotRequest) returns (Message);
+}

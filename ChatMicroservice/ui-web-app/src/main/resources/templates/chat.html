@@ -1,0 +1,268 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <title>Spring Boot WebSocket</title>
+    <!--<link rel="stylesheet" th:href="@{/css/main.css}" />-->
+    <!-- https://cdnjs.com/libraries/sockjs-client -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/sockjs-client/1.1.4/sockjs.min.js"></script>
+    <!-- https://cdnjs.com/libraries/stomp.js/ -->
+    <script  src="https://cdnjs.cloudflare.com/ajax/libs/stomp.js/2.3.3/stomp.min.js"></script>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>jQuery UI Tabs - Default functionality</title>
+    <link rel="stylesheet" href="//code.jquery.com/ui/1.12.1/themes/base/jquery-ui.css">
+    <script src="https://code.jquery.com/jquery-1.12.4.js"></script>
+    <script src="https://code.jquery.com/ui/1.12.1/jquery-ui.js"></script>
+    <script>
+        $( function() {
+            $( "#tabs" ).tabs();
+        } );
+    </script>
+</head>
+<body>
+
+<div id="tabs">
+    <ul>
+        <li><a href="#tabs-1">Home</a></li>
+        <li><a href="#tabs-2">Chat</a></li>
+        <li><a href="#tabs-3">Online</a></li>
+    </ul>
+    <div id="tabs-1">
+
+    </div>
+    <div id="tabs-2">
+
+        <table>
+            <thead>
+            <tr>
+                <th>
+                    <div id="chat-container">
+                        <div class="chat-header">
+                            <div class="user-container">
+                                <span id="username" th:utext="${username}"></span>
+                                <a th:href="@{/logout}">Logout</a>
+                            </div>
+                            <h3>Spring WebSocket Chat Demo</h3>
+                        </div>
+                        <hr/>
+
+                        <div id="connecting">Connecting...</div>
+<!--                        has message-->
+                        <div th:if="${messagesOfPublicChatRoom}">
+                            <ul id="messageArea">
+                                <li class="event-message" th:each="mess: ${messagesOfPublicChatRoom}">
+                                    <span th:utext="${mess.mess}"></span>
+                                </li>
+                            </ul>
+                        </div>
+<!--                        else-->
+                        <div th:unless="${messagesOfPublicChatRoom}">
+                            <ul id="messageArea">
+                            </ul>
+                        </div>
+                        <form id="messageForm" name="messageForm">
+                            <div class="input-message">
+                                <input type="text" id="message" autocomplete="off"
+                                       placeholder="Type a message..."/>
+                                <button type="submit">Send</button>
+                            </div>
+                        </form>
+                    </div>
+                </th>
+                <th>
+                    <ul id="online-list" data-role="listview"></ul>
+                </th>
+            </tr>
+        </table>
+
+    </div>
+    <div id="tabs-3">
+    </div>
+    <h1>Chat information</h1>
+    <h3 id="endpoint" th:utext="${endpoint}"/>
+    <h3 id="topic" th:utext="${topic}"/>
+    <h3 id="chatCode" th:utext="${chatCode}"/>
+<!--    <h3> SESSION BELOW </h3>-->
+<!--    <p hidden id="session_token" th:text="${session.user}" ></p>-->
+</div>
+
+<script>
+
+    // console.log('My village name, ' +String(${session.username}));
+
+
+    var roomId = 'publicChatRoom'; //default room
+    var stompClient = null;
+    var listConnected = [];
+
+    //kiem tra connect da ton tai hay chua
+    function checkConnection(roomIdTemp) {
+
+        var flag = false;
+        for(var i=0;i<listConnected.length;i++){
+            if(roomIdTemp == listConnected[i]){
+                flag = true;
+                break;
+            }
+        }
+        if(flag == false){
+            listConnected.push(roomId)
+
+            stompClient.subscribe('/topic/' + roomId, onMessageReceived_1);
+            stompClient.send("/app/chat.addUser",
+                {},
+                JSON.stringify({sender: username, type: 'JOIN', roomId: roomId})
+            )
+        }
+        return flag;
+    }
+
+    function moveToChatPage(roomIdTemp) {
+        $("#messageArea").html('');
+        roomId = roomIdTemp;
+        checkConnection(roomIdTemp);
+        // get message of the room with room id
+        $.ajax({
+            type: "GET",
+            contentType: "application/json",
+            url: "http://localhost:8080/messages/" + roomId,
+            dataType: 'json',
+            cache: false,
+            timeout: 600000,
+            success: function (data) {
+
+                console.log(data)
+                for(var i=0;i<data.messages.length;i++){
+                    var messageElement = document.createElement('li');
+
+                    messageElement.classList.add('chat-message');
+                    var usernameElement = document.createElement('strong');
+                    usernameElement.classList.add('nickname');
+                    var usernameText = document.createTextNode(data.messages[i].email);
+                    usernameElement.appendChild(usernameText);
+                    messageElement.appendChild(usernameElement);
+
+                    var textElement = document.createElement('span');
+                    var messageText = document.createTextNode(data.messages[i].mess);
+                    textElement.appendChild(messageText);
+
+                    messageElement.appendChild(textElement);
+
+                    messageArea.appendChild(messageElement);
+                    messageArea.scrollTop = messageArea.scrollHeight;
+                }
+            },
+            error: function (e) {
+                console.log("ERROR")
+            }
+        });
+    }
+
+        var messageForm = document.querySelector('#messageForm');
+        var messageInput = document.querySelector('#message');
+        var messageArea = document.querySelector('#messageArea');
+        var connectingElement = document.querySelector('#connecting');
+
+        var username = null;
+        var chatCode = document.querySelector('#chatCode').innerText;
+
+        function connect() {
+            username = document.querySelector('#username').innerText.trim();
+
+            var socket = new SockJS(document.querySelector('#endpoint').innerText);
+            stompClient = Stomp.over(socket);
+
+            stompClient.connect({}, onConnected, onError);
+        }
+
+        // Connect to WebSocket Server.
+        connect();
+
+        function onConnected() {
+            // Subscribe to the Public Topic
+            checkConnection('publicChatRoom');
+            stompClient.subscribe('/topic/onlineList', onMessageReceived_2);
+            stompClient.send("/app/chat.getListOnlineUser");
+            // Tell your username to the server
+            // stompClient.send("/app/chat.addUser", {}, JSON.stringify({sender: username, roomId: roomId, type: 'JOIN'}))
+            connectingElement.classList.add('hidden');
+        }
+
+        function onError(error) {
+            connectingElement.textContent = 'Could not connect to WebSocket server. Please refresh this page to try again!';
+            connectingElement.style.color = 'red';
+        }
+
+        function sendMessage(event) {
+            var messageContent = messageInput.value.trim();
+            if (messageContent && stompClient) {
+                var chatMessage = {
+                    sender: username,
+                    content: messageInput.value,
+                    roomId: roomId,
+                    type: 'CHAT'
+                };
+                stompClient.send("/app/chat.sendMessage", {}, JSON.stringify(chatMessage));
+                messageInput.value = '';
+            }
+            event.preventDefault();
+        }
+
+        function onMessageReceived_1(payload) {
+            var message = JSON.parse(payload.body);
+
+            if (message.roomId == roomId) {
+                var messageElement = document.createElement('li');
+
+                if (message.type === 'JOIN') {
+                    messageElement.classList.add('event-message');
+                    message.content = message.sender + ' joined!';
+                } else if (message.type === 'LEAVE') {
+                    messageElement.classList.add('event-message');
+                    message.content = message.sender + ' left!';
+                } else {
+                    messageElement.classList.add('chat-message');
+                    var usernameElement = document.createElement('strong');
+                    usernameElement.classList.add('nickname');
+                    var usernameText = document.createTextNode(message.sender);
+                    usernameElement.appendChild(usernameText);
+                    messageElement.appendChild(usernameElement);
+                }
+
+                var textElement = document.createElement('span');
+                var messageText = document.createTextNode(message.content);
+                textElement.appendChild(messageText);
+
+                messageElement.appendChild(textElement);
+
+                messageArea.appendChild(messageElement);
+                messageArea.scrollTop = messageArea.scrollHeight;
+            }
+        }
+
+        function onMessageReceived_2(payload) {
+            var message = JSON.parse(payload.body);
+            var content = '<li onclick="moveToChatPage(\'' + 'publicChatRoom' + '\')">General</li>';
+
+            for (var i = 0; i < message.length; i++) {
+                if (message[i].username !== username) {
+                    // var temp = username > message[i] ? username + message[i] : message[i] + username;
+                    var temp = chatCode > message[i].chatCode ? chatCode + message[i].chatCode : message[i].chatCode + chatCode;
+
+                    console.log("chat code root : " + chatCode + "/" + "user chat code : " + message[i].chatCode);
+
+                    content += '<li onclick="moveToChatPage(\'' + temp + '\')">' + message[i].username + '</li>';
+                }
+            }
+            $('#online-list').html(content);
+        }
+
+        messageForm.addEventListener('submit', sendMessage, true);
+
+        $('document').ready(function () {
+
+        })
+
+</script>
+</body>
+</html>
